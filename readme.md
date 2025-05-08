@@ -30,17 +30,26 @@ Unlock the power of **AI-driven design** with a seamless bridge between Cursor A
 - [Cursor AI](https://cursor.sh/) editor
 - [Figma](https://www.figma.com/) account
 
+### Bun Installation (Cross-Platform)
+
+#### macOS (Intel / M1)
+```bash
+curl -fsSL https://bun.sh/install | bash
+```
+
+#### Windows (PowerShell)
+```powershell
+irm https://bun.sh/install.ps1 | iex
+```
+
+> **Note:** Bun binaries are installed per-machine and should not be committed to this repository. We rely on `.gitignore` (and Git LFS for any other large assets) to keep the repo clean.
+
 ### Setup in 60 Seconds
 
-1. **Install Dependencies**
+1. **Install Project Dependencies**
    ```bash
-   # Install Bun if needed
-   curl -fsSL https://bun.sh/install | bash
-   
-   # Setup project
    bun setup
    ```
-
 2. **Launch Server**
    ```bash
    bun start
