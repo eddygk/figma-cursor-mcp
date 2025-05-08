@@ -1,6 +1,6 @@
 # Research: Existing Figma Tools & Integrations for AI Agent Interaction (via MCP)
 
-Date: 2025-05-07
+Date: 2025-05-08
 
 This document summarizes research into existing Figma tools, plugins, and third-party integrations that could enable AI agents (like Cascade or Claude Desktop) to programmatically interact with Figma designs or data, with a focus on solutions that might facilitate creating or leveraging an MCP (Model Context Protocol) service.
 
@@ -107,9 +107,9 @@ Based on official and authoritative sources ([Cursor's GitHub](https://github.co
 - Monitor logs for unauthorized access or errors
 
 ### 7. Troubleshooting
-| Symptom                  | Diagnostic Check                | Resolution                   |
-|--------------------------|---------------------------------|------------------------------|
-| Connection timeout       | `nc -zv localhost 3333`         | Verify MCP server running    |
+| Symptom               | Diagnostic Check              | Resolution                  |
+|-----------------------|-------------------------------|----------------------------|
+| Connection timeout    | `nc -zv localhost 3333`       | Verify MCP server running   |
 | Authentication failures  | Token scopes in Figma Dev Portal| Regenerate with read/write   |
 | Component misalignment   | Auto-layout constraints         | Reconfigure Figma frames     |
 | Style drifts             | Cascade Memory version checks   | Re-sync design system        |
@@ -126,7 +126,7 @@ Based on official and authoritative sources ([Cursor's GitHub](https://github.co
 
 ## Figma Account Requirements for MCP/AI Integration
 
-- **Figma’s REST API and plugin ecosystem** (used by Cursor’s MCP plugin and similar tools) are available to all Figma users, including those on the free tier.
+- **Figma's REST API and plugin ecosystem** (used by Cursor's MCP plugin and similar tools) are available to all Figma users, including those on the free tier.
 - **Personal Access Tokens** for the API can be generated with a free account.
 - **Plugins** can be installed and used on the free plan.
 
@@ -135,7 +135,7 @@ Based on official and authoritative sources ([Cursor's GitHub](https://github.co
 - Collaboration and version history have some limits on the free plan.
 - Some advanced features (design systems, shared libraries, branching, etc.) require a paid plan, but these are not required for basic MCP/API/plugin use.
 
-**Cursor’s MCP plugin and most MCP tools do NOT require a paid Figma account for basic usage.**
+**Cursor's MCP plugin and most MCP tools do NOT require a paid Figma account for basic usage.**
 
 You only need a paid account for advanced Figma features, not for agentic/MCP workflows or plugin/API access.
 
@@ -191,7 +191,7 @@ Add to your `mcp_config.json` (adjust port/path as needed):
 
 ---
 
-## 🏗️ Project Architecture
+## 🔍✏️ Project Architecture
 
 ```mermaid
 flowchart LR
@@ -218,7 +218,7 @@ cursor-talk-to-figma-mcp/
 ├── src/
 │   ├── talk_to_figma_mcp/    # TypeScript MCP server
 │   ├── cursor_mcp_plugin/    # Figma plugin
-│   └── socket.ts             # WebSocket communication
+│   └── socket.ts            # WebSocket communication
 ```
 
 ## 🚀 Next Steps: MacBook Setup and GitHub Fork
@@ -291,3 +291,267 @@ cursor-talk-to-figma-mcp/
 ---
 
 *This plan will ensure a clean, platform-agnostic setup and a fresh GitHub repository, unconnected to the original project history.*
+
+## 🔍 Figma-Cursor-MCP Project Code Review
+
+Below is a comprehensive code review of the Figma-Cursor-MCP project that creates a bridge between Cursor AI and Figma using the Model Context Protocol (MCP).
+
+### Project Overview
+
+This is a well-structured MCP server implementation that:
+- Connects Claude/Cursor AI to Figma using WebSockets
+- Provides tools for creating and manipulating Figma design elements
+- Includes a Figma plugin with UI for connection management
+- Supports design system integration and modern UI patterns
+
+### Strengths
+
+1. **Comprehensive Figma Integration**
+   - Covers most essential Figma operations (shapes, text, frames, etc.)
+   - Includes advanced features like design systems and component handling
+   - Well-organized command structure for AI interactions
+
+2. **Solid MCP Implementation**
+   - Proper use of MCP server SDK
+   - Structured tool definitions with clear parameters
+   - Helpful prompts for design guidance
+
+3. **Robust Communication Layer**
+   - Channel-based WebSocket implementation
+   - Request/response tracking with timeouts
+   - Error handling and reconnection logic
+
+### Improvement Opportunities
+
+#### 1. Code Structure and Modularity
+
+The `server.ts` file (2000+ lines) is too large and could benefit from modularization:
+
+```typescript
+// Current approach: everything in server.ts
+// Proposed: Split into modules
+
+// src/talk_to_figma_mcp/tools/shapes.ts
+export function registerShapeTools(server: McpServer) {
+  server.tool(
+    "create_rectangle",
+    "Create a new rectangle in Figma",
+    // ... parameter definitions
+    async (params) => {
+      // Implementation
+    }
+  );
+  
+  // Other shape-related tools
+}
+
+// server.ts
+import { registerShapeTools } from './tools/shapes.js';
+import { registerTextTools } from './tools/text.js';
+// ...
+
+registerShapeTools(server);
+registerTextTools(server);
+```
+
+#### 2. Testing Infrastructure
+
+There's no visible testing framework. Adding tests would improve reliability:
+
+```typescript
+// Example Jest test for the create_rectangle tool
+import { handleCreateRectangle } from './tools/shapes';
+
+describe('Create Rectangle Tool', () => {
+  test('should create a rectangle with default values', async () => {
+    const mockFigmaAPI = {
+      sendCommand: jest.fn().mockResolvedValue({
+        id: 'rect123',
+        name: 'Rectangle'
+      })
+    };
+    
+    const result = await handleCreateRectangle(
+      { x: 100, y: 100, width: 200, height: 200 },
+      mockFigmaAPI
+    );
+    
+    expect(mockFigmaAPI.sendCommand).toHaveBeenCalledWith(
+      'create_rectangle',
+      expect.objectContaining({
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 200
+      })
+    );
+    expect(result.content[0].text).toContain('Created rectangle');
+  });
+});
+```
+
+#### 3. Error Handling Improvements
+
+Current error handling could be more robust and informative:
+
+```typescript
+// Current approach:
+try {
+  const result = await sendCommandToFigma('create_rectangle', params);
+  return { content: [{ type: "text", text: `Created rectangle...` }] };
+} catch (error) {
+  return {
+    content: [{ 
+      type: "text", 
+      text: `Error creating rectangle: ${error instanceof Error ? error.message : String(error)}`
+    }]
+  };
+}
+
+// Improved approach:
+try {
+  const result = await sendCommandToFigma('create_rectangle', params);
+  return { content: [{ type: "text", text: `Created rectangle...` }] };
+} catch (error) {
+  const errorCode = identifyErrorType(error);
+  
+  switch (errorCode) {
+    case 'CONNECTION_ERROR':
+      await attemptReconnection();
+      return { content: [{ type: "text", text: "Connection to Figma lost. Attempting to reconnect..." }] };
+    case 'PERMISSION_ERROR':
+      return { content: [{ type: "text", text: "You don't have permission to create elements in this document." }] };
+    case 'INVALID_PARENT':
+      return { content: [{ type: "text", text: "The specified parent node doesn't exist or can't contain this element." }] };
+    default:
+      logError('create_rectangle', error, params);
+      return { content: [{ type: "text", text: `Error creating rectangle: ${getErrorMessage(error)}` }] };
+  }
+}
+```
+
+#### 4. Security Enhancements
+
+The WebSocket communication could benefit from better security:
+
+```typescript
+// Add origin validation
+const server = Bun.serve({
+  fetch(req: Request, server: Server) {
+    const origin = req.headers.get('Origin');
+    const allowedOrigins = ['http://localhost:8000', 'https://www.figma.com'];
+    
+    if (origin && !allowedOrigins.includes(origin)) {
+      return new Response('Unauthorized origin', { status: 403 });
+    }
+    
+    // Rest of fetch handler...
+  }
+});
+
+// Add authentication token
+function connectToFigma(port: number = 3055, authToken: string) {
+  ws = new WebSocket(`ws://localhost:${port}`);
+  
+  ws.on('open', () => {
+    // Authenticate immediately after connection
+    ws.send(JSON.stringify({
+      type: 'authenticate',
+      token: authToken
+    }));
+  });
+  
+  // Rest of connection logic...
+}
+```
+
+#### 5. Documentation Improvements
+
+Add more comprehensive documentation, especially for setup and usage:
+
+```markdown
+# Figma-Cursor-MCP Setup Guide
+
+## Prerequisites
+- Bun runtime (v1.0.0 or higher)
+- Figma account with plugin development access
+- Cursor AI with MCP support
+
+## Installation Steps
+1. Clone this repository
+2. Run `bun install` to install dependencies
+3. Configure your Figma API token in `.env`
+4. Start the server with `bun start`
+
+## Connecting to Figma
+1. Open Figma and install the development plugin
+2. In the plugin UI, enter the server port (default: 3055)
+3. Click "Connect" to establish the WebSocket connection
+4. Use the "join_channel" command to connect to a specific channel
+
+## Command Examples
+Here are some examples of commands you can use...
+```
+
+#### 6. Performance Optimizations
+
+```typescript
+// Add caching for expensive operations
+const nodeInfoCache = new Map<string, {info: any, timestamp: number}>();
+const CACHE_TTL = 30000; // 30 seconds
+
+async function getNodeInfoWithCache(nodeId: string) {
+  const now = Date.now();
+  const cached = nodeInfoCache.get(nodeId);
+  
+  if (cached && now - cached.timestamp < CACHE_TTL) {
+    return cached.info;
+  }
+  
+  const info = await sendCommandToFigma('get_node_info', { nodeId });
+  nodeInfoCache.set(nodeId, { info, timestamp: now });
+  
+  return info;
+}
+
+// Add batch processing for multiple operations
+async function batchCommands(commands: {command: string, params: any}[]) {
+  return sendCommandToFigma('batch_commands', { commands });
+}
+```
+
+### Additional Suggestions
+
+1. **Cross-Platform Compatibility**: Ensure setup scripts work on Windows (not just Unix-based systems)
+
+2. **Environment Variables**: Use a proper `.env` file with validation:
+   ```typescript
+   import { z } from 'zod';
+   
+   const envSchema = z.object({
+     FIGMA_TOKEN: z.string().min(1),
+     PORT: z.coerce.number().default(3055),
+     LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info')
+   });
+   
+   const env = envSchema.parse(process.env);
+   ```
+
+3. **Containerization**: Add Docker support for easier deployment
+   ```dockerfile
+   FROM oven/bun:latest
+   WORKDIR /app
+   COPY package.json bun.lock ./
+   RUN bun install --frozen-lockfile
+   COPY . .
+   EXPOSE 3055
+   CMD ["bun", "start"]
+   ```
+
+4. **Telemetry**: Add optional usage analytics to understand common commands
+
+5. **Command History**: Implement a history feature to recall and modify previous operations
+
+### Conclusion
+
+The Figma-Cursor-MCP project is a solid implementation that bridges AI and design tools effectively. With the suggested improvements, particularly around code organization, testing, and security, it could become an even more robust and maintainable solution.
