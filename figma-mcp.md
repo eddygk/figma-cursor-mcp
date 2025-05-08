@@ -191,6 +191,36 @@ Add to your `mcp_config.json` (adjust port/path as needed):
 
 ---
 
+## 🏗️ Project Architecture
+
+```mermaid
+flowchart LR
+  subgraph Figma
+    Plugin[Cursor MCP Plugin]
+  end
+
+  subgraph Local
+    Windsurf[Windsurf/Cascade]
+    MCPServer[TypeScript MCP Server]
+  end
+
+  subgraph BunRuntime
+    BunExec[bun run server.ts]
+  end
+
+  Plugin -- WebSocket --> MCPServer
+  Windsurf -- stdio --> MCPServer
+  MCPServer -- BunExec --> BunRuntime
+```
+
+```text
+cursor-talk-to-figma-mcp/
+├── src/
+│   ├── talk_to_figma_mcp/    # TypeScript MCP server
+│   ├── cursor_mcp_plugin/    # Figma plugin
+│   └── socket.ts             # WebSocket communication
+```
+
 ## 🚀 Next Steps: MacBook Setup and GitHub Fork
 
 ### Plan for Setting Up Figma-Cursor-MCP on M1 MacBook
